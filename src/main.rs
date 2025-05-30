@@ -1,3 +1,11 @@
+use ascii::{image, video};
+use std::fs::File;
+
 fn main() {
-    println!("Hello, world!");
+    // for i in 1..=8 {
+    //     let file = File::open(format!("assets/{i}.jpg")).expect("failed to open file");
+    //     image::draw(file);
+    // }
+
+    video::draw("assets/BigBuckBunny.mp4");
 }
