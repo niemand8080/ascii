@@ -1,10 +1,11 @@
 pub mod image;
 pub mod video;
 
+use std::time::Duration;
+
 pub const CHARS: [char; 14] = [
     ' ', '.', ':', '-', '~', '=', '+', '*', 'o', '%', '&', '8', '#', '@',
 ];
-pub const MAX_WIDTH: f64 = 256.0;
 
 pub fn draw(rows: Vec<Vec<(u8, u8, u8)>>) {
     print!("\x1b[40;2;0;0;0m");
@@ -19,7 +20,7 @@ pub fn draw(rows: Vec<Vec<(u8, u8, u8)>>) {
     print!("\x1b[0m");
 }
 
-fn symbol(lightness: u8) -> char {
+pub fn symbol(lightness: u8) -> char {
     match lightness {
         100 => CHARS[CHARS.len() - 1],
         0 => CHARS[0],
@@ -35,12 +36,12 @@ fn symbol(lightness: u8) -> char {
     }
 }
 
-fn get_lightness(r: u8, g: u8, b: u8) -> u8 {
+pub fn get_lightness(r: u8, g: u8, b: u8) -> u8 {
     let max = r.max(g.max(b));
     let min = r.min(g.min(b));
     (((max as u16 + min as u16) as f64 / (2.0 * 255.0)) * 100.0).round() as u8
 }
-fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (u16, u8, u8) {
+pub fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (u16, u8, u8) {
     let r = r as f64 / 255.0;
     let g = g as f64 / 255.0;
     let b = b as f64 / 255.0;
@@ -77,6 +78,26 @@ pub fn format_pixels(pixels: &[u8], width: u16) -> Vec<Vec<(u8, u8, u8)>> {
                 .collect::<Vec<_>>()
         })
         .collect()
+}
+
+fn wait_for_terminal_scale(min_width: u32, min_height: u32) {
+    if let Some((mut w, mut h)) = term_size::dimensions() {
+        println!(
+            "\x1b[1;31m{} x {}\x1b[0m (current: {} x {})",
+            min_width, min_height, w, h
+        );
+        while w < min_width as usize || h < min_height as usize {
+            println!(
+                "\x1b[1A\x1b[1;31m{} x {}\x1b[0m (current: {} x {})",
+                min_width, min_height, w, h
+            );
+            std::thread::sleep(Duration::from_millis(500));
+            (w, h) = term_size::dimensions().unwrap();
+        }
+        println!("\x1b[1A\x1b[1;32m{w} x {h}\x1b[0m");
+    } else {
+        eprintln!("Unable to get terminal dimensions");
+    }
 }
 
 #[cfg(test)]
