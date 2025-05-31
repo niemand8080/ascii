@@ -4,13 +4,14 @@ pub mod video;
 pub const CHARS: [char; 14] = [
     ' ', '.', ':', '-', '~', '=', '+', '*', 'o', '%', '&', '8', '#', '@',
 ];
-pub const MAX_WIDTH: f64 = 320.0;
+pub const MAX_WIDTH: f64 = 256.0;
 
 pub fn draw(rows: Vec<Vec<(u8, u8, u8)>>) {
+    print!("\x1b[40;2;0;0;0m");
     for pixels in rows {
         for (r, g, b) in pixels {
-            let hsl = rgb_to_hsl(r, g, b);
-            let s = symbol(hsl.2);
+            let l = get_lightness(r, g, b);
+            let s = symbol(l);
             print!("\x1b[38;2;{r};{g};{b}m{s}{s}");
         }
         println!();
@@ -34,6 +35,11 @@ fn symbol(lightness: u8) -> char {
     }
 }
 
+fn get_lightness(r: u8, g: u8, b: u8) -> u8 {
+    let max = r.max(g.max(b));
+    let min = r.min(g.min(b));
+    (((max as u16 + min as u16) as f64 / (2.0 * 255.0)) * 100.0).round() as u8
+}
 fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (u16, u8, u8) {
     let r = r as f64 / 255.0;
     let g = g as f64 / 255.0;
@@ -76,32 +82,80 @@ pub fn format_pixels(pixels: &[u8], width: u16) -> Vec<Vec<(u8, u8, u8)>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::SystemTime;
 
     #[test]
-    fn convert() {
-        // for i in 0..=255 {
-        //     println!("(255, i, 0) -> {:?}", rgb_to_hsl(255, i, 0));
-        // }
-        // for i in (0..=255).rev() {
-        //     println!("({i}, 255, 0) -> {:?}", rgb_to_hsl(i, 255, 0));
-        // }
-        // for i in 0..=255 {
-        //     println!("(0, 255, {i}) -> {:?}", rgb_to_hsl(0, 255, i));
-        // }
-        // for i in (0..=255).rev() {
-        //     println!("(0, {i}, 255) -> {:?}", rgb_to_hsl(0, i, 255));
-        // }
-        // for i in 250..=255 {
-        //     println!("({i}, 0, 255) -> {:?}", rgb_to_hsl(i, 0, 255));
-        // }
-        // for i in (250..=255).rev() {
-        //     println!("(255, 0, {i}) -> {:?}", rgb_to_hsl(255, 0, i));
-        // }
+    fn convert_speed() {
+        let times = 100;
+        let from = 0;
+        let to = 100;
 
-        assert_eq!(rgb_to_hsl(24, 98, 118), (193, 66, 28));
-        assert_eq!(rgb_to_hsl(207, 135, 135), (0, 43, 67));
-        assert_eq!(rgb_to_hsl(128, 128, 0), (60, 100, 25));
-        assert_eq!(rgb_to_hsl(255, 35, 175), (322, 100, 57));
-        assert_eq!(rgb_to_hsl(255, 85, 85), (0, 100, 67));
+        let count = times as u64 * to as u64 * to as u64 * to as u64;
+
+        let started_hsl = SystemTime::now();
+        // let mut counter = 0;
+        for _ in 0..times {
+            for r in from..to {
+                for g in from..to {
+                    for b in from..to {
+                        // counter += 1;
+                        let _ = rgb_to_hsl(r, g, b);
+                    }
+                }
+            }
+        }
+        println!("for {count} convertions");
+        println!(
+            "rgb to hsl: {}ms",
+            SystemTime::now()
+                .duration_since(started_hsl)
+                .unwrap()
+                .as_millis()
+        );
+        let started_l = SystemTime::now();
+        for _ in 0..times {
+            for r in from..to {
+                for g in from..to {
+                    for b in from..to {
+                        let _ = get_lightness(r, g, b);
+                    }
+                }
+            }
+        }
+        panic!(
+            "rgb to l: {}ms",
+            SystemTime::now()
+                .duration_since(started_l)
+                .unwrap()
+                .as_millis()
+        );
     }
+
+    // #[test]
+    // fn convert() {
+    //     // for i in 0..=255 {
+    //     //     println!("(255, i, 0) -> {:?}", rgb_to_hsl(255, i, 0));
+    //     // }
+    //     // for i in (0..=255).rev() {
+    //     //     println!("({i}, 255, 0) -> {:?}", rgb_to_hsl(i, 255, 0));
+    //     // }
+    //     // for i in 0..=255 {
+    //     //     println!("(0, 255, {i}) -> {:?}", rgb_to_hsl(0, 255, i));
+    //     // }
+    //     // for i in (0..=255).rev() {
+    //     //     println!("(0, {i}, 255) -> {:?}", rgb_to_hsl(0, i, 255));
+    //     // }
+    //     // for i in 250..=255 {
+    //     //     println!("({i}, 0, 255) -> {:?}", rgb_to_hsl(i, 0, 255));
+    //     // }
+    //     // for i in (250..=255).rev() {
+    //     //     println!("(255, 0, {i}) -> {:?}", rgb_to_hsl(255, 0, i));
+    //     // }
+
+    //     assert_eq!(rgb_to_hsl(24, 98, 118), (193, 66, 28));
+    //     assert_eq!(rgb_to_hsl(207, 135, 135), (0, 43, 67));
+    //     assert_eq!(rgb_to_hsl(128, 128, 0), (60, 100, 25));
+    //     assert_eq!(rgb_to_hsl(255, 35, 175), (322, 100, 57));
+    //     assert_eq!(rgb_to_hsl(255, 85, 85), (0, 100, 67));
+    // }
 }
