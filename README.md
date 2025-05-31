@@ -6,6 +6,8 @@ For the Video to ASCII part it is recommended to use a very fast terminal like [
 
 ### Image to ASCII
 
+Images if from here: [torii-gate-japan](https://static6.depositphotos.com/1128318/616/i/450/depositphotos_6161942-stock-photo-torii-gate-japan.jpg)
+
 ![ascii](examples/ascii_torii-gate-japan.jpg)
 ![original](examples/torii-gate-japan.jpg)
 
