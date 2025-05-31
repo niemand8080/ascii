@@ -2,6 +2,30 @@
 
 For the Video to ASCII part it is recommended to use a very fast terminal like [alacritty](https://alacritty.org).
 
+## Requirements
+
+1. FFmpeg (I only tested version 7.1.1)
+2. pkg-config
+3. The path where all .pc file of the FFmpeg libraries are located e.g. `/opt/homebrew/lib/pkgconfig`
+
+## Installation
+
+1. Clone the repo
+
+```shell 
+git clone https://github.com/niemand8080/ascii
+```
+
+```shell 
+cd ascii
+```
+
+2. run something like the following (you may want to change the `src/main.rs` file)
+
+```shell
+PKG_CONFIG_PATH=:/opt/homebrew/lib/pkgconfig cargo run --release
+```
+
 ## Examples
 
 ### Image to ASCII
