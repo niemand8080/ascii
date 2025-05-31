@@ -1,6 +1,15 @@
 # ASCII
 
+For the Video to ASCII part it is recommended to use a very fast terminal like [alacritty](https://alacritty.org).
+
 ## Examples
+
+### Image to ASCII
+
+![ascii](examples/ascii_torii-gate-japan.jpg)
+![original](examples/torii-gate-japan.jpg)
+
+### Video to ASCII
 
 Video is from here: [BigBuckBunny](http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4)
 

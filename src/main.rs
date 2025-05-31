@@ -11,5 +11,8 @@ fn main() {
     //     image::draw(file, MAX_WIDTH);
     // }
 
-    video::draw("examples/BigBuckBunny.mp4", Flags::BICUBLIN, MAX_WIDTH);
+    // let file = File::open("examples/torii-gate-japan.jpg").unwrap();
+    // image::draw(file, MAX_WIDTH);
+
+    // video::draw("examples/BigBuckBunny.mp4", Flags::BICUBLIN, MAX_WIDTH);
 }

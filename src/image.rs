@@ -1,3 +1,5 @@
+use crate::wait_for_terminal_scale;
+
 use jpeg_decoder::Decoder;
 use std::fs::File;
 use std::io::BufReader;
@@ -16,6 +18,8 @@ pub fn draw(file: File, max_width: f64) {
     let pixels = decoder.decode().expect("failed to decode");
 
     let rows = crate::format_pixels(&pixels, w);
+
+    wait_for_terminal_scale(w as u32 * 2, h as u32);
 
     crate::draw(rows);
     println!("{w} x {h} ({new_width} x {new_height})");
