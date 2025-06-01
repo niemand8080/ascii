@@ -1,5 +1,6 @@
 pub mod image;
 pub mod video;
+pub mod convert;
 
 use std::time::Duration;
 
@@ -11,6 +12,7 @@ pub const CHARS: [char; 14] = [
 
 /// Prints the given `Pixels` to stdout.
 pub fn draw(pixels: Pixels) {
+    print!("\x1b[?25l"); // hide cursor
     print!("\x1b[40;2;0;0;0m");
     for row in pixels {
         for (r, g, b) in row {
@@ -21,6 +23,7 @@ pub fn draw(pixels: Pixels) {
         println!();
     }
     print!("\x1b[0m");
+    print!("\x1b[?25h"); // show cursor
 }
 
 /// Get the symbol matching the lightness.
@@ -40,7 +43,7 @@ pub fn symbol(lightness: u8) -> char {
     }
 }
 
-/// Get the lightness of the given `RGB` values. 
+/// Get the lightness of the given `RGB` values.
 pub fn get_lightness(r: u8, g: u8, b: u8) -> u8 {
     let max = r.max(g.max(b));
     let min = r.min(g.min(b));

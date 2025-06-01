@@ -10,11 +10,16 @@ const MAX_WIDTH: f64 = 5.0 * 32.0;
 // PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/homebrew/lib/pkgconfig cargo run --release
 
 fn main() {
+    ffmpeg_next::init().unwrap();
+
     let font = FontRef::try_from_slice(include_bytes!("/Users/ben/Library/Fonts/JetBrainsMonoNerdFont-Regular.ttf")).unwrap();
 
-    // video::draw_to_file("assets/All My Fellas.mp4", "examples/test.mp4", &font, Flags::BICUBIC, MAX_WIDTH);
+    video::draw_to_file("examples/BigBuckBunny.mp4", "examples/BigBuckBunny2.mp4", &font, Flags::BICUBIC, MAX_WIDTH);
+    // video::draw_to_file("assets/All My Fellas.mp4", "examples/All My Fellas.mp4", &font, Flags::BICUBIC, MAX_WIDTH);
+    // video::draw_to_file("assets/Deichkind.mp4", "examples/Deichkind.mp4", &font, Flags::BICUBIC, MAX_WIDTH);
+    // video::draw_to_file("assets/Dancin.mp4", "examples/Dancin.mp4", &font, Flags::BICUBIC, MAX_WIDTH);
 
-    image::draw_to_file("examples/ascii-torii-gate-japan.jpg", &font, image::get_rows("examples/torii-gate-japan.jpg", MAX_WIDTH).0);
+    // image::draw_to_file("examples/ascii-torii-gate-japan.jpg", &font, image::get_rows("examples/torii-gate-japan.jpg", MAX_WIDTH).0);
 
     // for i in 1..=8 {
     //     let file = File::open(format!("assets/{i}.jpg")).expect("failed to open file");

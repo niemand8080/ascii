@@ -6,6 +6,8 @@ use crate::wait_for_terminal_scale;
 use cpal::SampleFormat;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
+use imageproc::image::EncodableLayout;
+
 use ffmpeg::format::{Pixel, Sample as FFmpegSample, context::Input, sample::Type as SampleType};
 use ffmpeg::media::Type as MediaType;
 use ffmpeg::software::scaling::context::Context;
@@ -13,7 +15,8 @@ use ffmpeg::util::frame::{self, Audio, Video};
 
 use ringbuf::RingBuffer;
 
-use std::fs;
+use std::fs::{self, File};
+use std::io::Read;
 
 trait SampleFormatConversion {
     fn as_ffmpeg_sample(&self) -> FFmpegSample;
@@ -184,7 +187,11 @@ pub fn draw(
     scale_algorithm: ffmpeg_next::software::scaling::flag::Flags,
     max_width: f64,
 ) {
-    play(path, scale_algorithm, max_width, false, true, crate::draw);
+    play(path, scale_algorithm, max_width, false, true, |p, _| {
+        let height = p.len();
+        crate::draw(p);
+        print!("\x1b[{height}A");
+    });
 }
 
 ///
@@ -195,17 +202,64 @@ pub fn draw_to_file(
     scale_algorithm: ffmpeg_next::software::scaling::flag::Flags,
     max_width: f64,
 ) {
-    let build_dir = "tmp";
-    let mut counter = 0u32;
+    let id = rand::random::<u32>();
+    let mut counter = 0;
 
-    fs::create_dir_all(build_dir).expect("Couldn't create build dir");
+    let root = "tmp";
 
-    play(src, scale_algorithm, max_width, true, false, move |pixels| {
-        let target = format!("{build_dir}/{counter}.jpg");
-        crate::image::draw_to_file(&target, font, pixels);
-        // crate::draw(pixels);
-        counter += 1;
-    });
+    fs::create_dir_all(root).unwrap();
+    
+    let tmp_video = format!("{root}/{id}.video.mp4");
+
+    let mut mp4muxer = minimp4::Mp4Muxer::new(fs::File::create(&tmp_video).unwrap());
+
+    // todo: make get the correct size.
+    mp4muxer.init_video(1280, 720, false, dst);
+
+    let mref = &mut mp4muxer;
+    play(
+        src,
+        scale_algorithm,
+        max_width,
+        true,
+        false,
+        move |pixels, frame_rate| {
+            let target = format!("{root}/{id}.frame.{counter}.jpg");
+            println!("{counter}: draw to file");
+            crate::image::draw_to_file(&target, font, pixels);
+
+            println!("{counter}: get rgb pixels");
+            let (pixels, width, height) = crate::image::get_pixels(&target, None);
+
+            let mut encoder = openh264::encoder::Encoder::new().expect("Couldn't create encoder");
+
+            println!("{counter}: convert rgb to yuv");
+            let rgb_source =
+                openh264::formats::RgbSliceU8::new(&pixels, (width as usize, height as usize));
+            let yuv = openh264::formats::YUVBuffer::from_rgb_source(rgb_source);
+
+            let bitstream = encoder.encode(&yuv).unwrap();
+
+            let mut buf = Vec::new();
+            bitstream.write_vec(&mut buf);
+
+            println!("{counter}: write to video (buf len: {})", buf.len());
+            mref.write_video_with_fps(&buf, frame_rate);
+            println!("{counter}: remove file");
+            fs::remove_file(target).expect("Couldn't remove file");
+            // crate::draw(pixels);
+            counter += 1;
+            print!("\x1b[5A");
+        },
+    );
+    mp4muxer.close();
+
+    println!("\x1b[5BConvert file, so its smaler");
+    crate::convert::convert(src, &tmp_video, dst);
+    println!("Remove tmp video file: {tmp_video}");
+    if let Err(err) = fs::remove_file(&tmp_video) {
+        eprintln!("{err}");
+    }
 }
 
 fn play<F>(
@@ -216,10 +270,8 @@ fn play<F>(
     fit_termianl: bool,
     mut f: F,
 ) where
-    F: FnMut(Pixels),
+    F: FnMut(Pixels, u32),
 {
-    ffmpeg::init().unwrap();
-
     // new input ctx
     let mut ictx = ffmpeg::format::input(path).expect("Couldn't open file");
 
@@ -266,7 +318,10 @@ fn play<F>(
 
     let mut process_frames = |decoder: &mut ffmpeg::decoder::Video| {
         let mut decoded = Video::empty();
-        print!("\x1b[?25l"); // hide cursor
+        let fps = match decoder.frame_rate() {
+            Some(fr) => fr.numerator(),
+            None => 24,
+        };
         while decoder.receive_frame(&mut decoded).is_ok() {
             let mut rgb_frame = Video::empty();
             scaler
@@ -274,10 +329,8 @@ fn play<F>(
                 .expect("Input or output changed");
             let pixels = rgb_frame.data(0);
             let rows = crate::format_pixels(pixels, rgb_frame.width() as u16);
-            f(rows);
-            print!("\x1b[{}A", rgb_frame.height());
+            f(rows, fps as u32);
         }
-        print!("\x1b[?25h"); // show cursor
     };
 
     if let Some(audio_stream) = &mut audio_stream {
