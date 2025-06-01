@@ -1,5 +1,6 @@
 extern crate ffmpeg_next as ffmpeg;
 
+use crate::Pixels;
 use crate::wait_for_terminal_scale;
 
 use cpal::SampleFormat;
@@ -11,6 +12,8 @@ use ffmpeg::software::scaling::context::Context;
 use ffmpeg::util::frame::{self, Audio, Video};
 
 use ringbuf::RingBuffer;
+
+use std::fs;
 
 trait SampleFormatConversion {
     fn as_ffmpeg_sample(&self) -> FFmpegSample;
@@ -181,6 +184,40 @@ pub fn draw(
     scale_algorithm: ffmpeg_next::software::scaling::flag::Flags,
     max_width: f64,
 ) {
+    play(path, scale_algorithm, max_width, false, true, crate::draw);
+}
+
+///
+pub fn draw_to_file(
+    src: &str,
+    dst: &str,
+    font: &ab_glyph::FontRef<'_>,
+    scale_algorithm: ffmpeg_next::software::scaling::flag::Flags,
+    max_width: f64,
+) {
+    let build_dir = "tmp";
+    let mut counter = 0u32;
+
+    fs::create_dir_all(build_dir).expect("Couldn't create build dir");
+
+    play(src, scale_algorithm, max_width, true, false, move |pixels| {
+        let target = format!("{build_dir}/{counter}.jpg");
+        crate::image::draw_to_file(&target, font, pixels);
+        // crate::draw(pixels);
+        counter += 1;
+    });
+}
+
+fn play<F>(
+    path: &str,
+    scale_algorithm: ffmpeg_next::software::scaling::flag::Flags,
+    max_width: f64,
+    disable_audio: bool,
+    fit_termianl: bool,
+    mut f: F,
+) where
+    F: FnMut(Pixels),
+{
     ffmpeg::init().unwrap();
 
     // new input ctx
@@ -191,14 +228,20 @@ pub fn draw(
     let (mut producer, consumer) = buffer.split();
 
     // get best audio stream index AND creat audio decoder AND create resampler
-    let (mut audio_decoder, mut resampler, mut audio_stream, audio_stream_index) =
-        get_audio(&mut ictx, consumer);
+    let (mut audio_decoder, mut resampler, mut audio_stream, audio_stream_index) = if disable_audio
+    {
+        (None, None, None, None)
+    } else {
+        get_audio(&mut ictx, consumer)
+    };
 
     // contruct video decoder AND scaler AND get best video stream index
     let (mut video_decoder, mut scaler, video_stream_index) =
         get_video(&mut ictx, scale_algorithm, max_width);
 
-    wait_for_terminal_scale(scaler.output().width * 2, scaler.output().height + 2);
+    if fit_termianl {
+        wait_for_terminal_scale(scaler.output().width * 2, scaler.output().height + 2);
+    }
 
     let mut process_audio_frames = |decoder: &mut ffmpeg::decoder::Audio| {
         let mut decoded = Audio::empty();
@@ -231,7 +274,7 @@ pub fn draw(
                 .expect("Input or output changed");
             let pixels = rgb_frame.data(0);
             let rows = crate::format_pixels(pixels, rgb_frame.width() as u16);
-            crate::draw(rows);
+            f(rows);
             print!("\x1b[{}A", rgb_frame.height());
         }
         print!("\x1b[?25h"); // show cursor

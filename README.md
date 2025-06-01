@@ -1,6 +1,6 @@
 # ASCII
 
-For the Video to ASCII part it is recommended to use a very fast terminal like [alacritty](https://alacritty.org).
+For the Video to ASCII part it is recommended to use a very fast terminal like [alacritty](https://alacritty.org), if you want to ouput it to stdout.
 
 ## Requirements
 
@@ -32,7 +32,7 @@ PKG_CONFIG_PATH=:/opt/homebrew/lib/pkgconfig cargo run --release
 
 Images if from here: [torii-gate-japan](https://static6.depositphotos.com/1128318/616/i/450/depositphotos_6161942-stock-photo-torii-gate-japan.jpg)
 
-![ascii](examples/ascii_torii-gate-japan.jpg)
+![ascii](examples/ascii-torii-gate-japan.jpg)
 ![original](examples/torii-gate-japan.jpg)
 
 ### Video to ASCII

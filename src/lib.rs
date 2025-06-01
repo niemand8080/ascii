@@ -3,14 +3,17 @@ pub mod video;
 
 use std::time::Duration;
 
+pub type Pixels = Vec<Vec<(u8, u8, u8)>>;
+
 pub const CHARS: [char; 14] = [
     ' ', '.', ':', '-', '~', '=', '+', '*', 'o', '%', '&', '8', '#', '@',
 ];
 
-pub fn draw(rows: Vec<Vec<(u8, u8, u8)>>) {
+/// Prints the given `Pixels` to stdout.
+pub fn draw(pixels: Pixels) {
     print!("\x1b[40;2;0;0;0m");
-    for pixels in rows {
-        for (r, g, b) in pixels {
+    for row in pixels {
+        for (r, g, b) in row {
             let l = get_lightness(r, g, b);
             let s = symbol(l);
             print!("\x1b[38;2;{r};{g};{b}m{s}{s}");
@@ -20,6 +23,7 @@ pub fn draw(rows: Vec<Vec<(u8, u8, u8)>>) {
     print!("\x1b[0m");
 }
 
+/// Get the symbol matching the lightness.
 pub fn symbol(lightness: u8) -> char {
     match lightness {
         100 => CHARS[CHARS.len() - 1],
@@ -36,11 +40,14 @@ pub fn symbol(lightness: u8) -> char {
     }
 }
 
+/// Get the lightness of the given `RGB` values. 
 pub fn get_lightness(r: u8, g: u8, b: u8) -> u8 {
     let max = r.max(g.max(b));
     let min = r.min(g.min(b));
     (((max as u16 + min as u16) as f64 / (2.0 * 255.0)) * 100.0).round() as u8
 }
+
+/// Convert given `RGB` value into `HSL`.
 pub fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (u16, u8, u8) {
     let r = r as f64 / 255.0;
     let g = g as f64 / 255.0;
@@ -65,7 +72,17 @@ pub fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (u16, u8, u8) {
     (h.round() as u16, s.round() as u8, (l * 100.0).round() as u8)
 }
 
-pub fn format_pixels(pixels: &[u8], width: u16) -> Vec<Vec<(u8, u8, u8)>> {
+/// Formats the given pixels (not structured) into a structured form.
+///
+/// # Example
+///
+/// ```rust
+/// let pixels = [255, 0, 0, 0, 255, 0, 0, 0, 255];
+///
+/// let pixels = format_pixels(pixels, 1);
+/// println!("{pixels:?}"); // [[(255, 0, 0)], [(0, 255, 0)], [(0, 0, 255)]]
+/// ```
+pub fn format_pixels(pixels: &[u8], width: u16) -> Pixels {
     pixels
         .chunks(width as usize * 3)
         .map(|chunk| {
@@ -80,6 +97,7 @@ pub fn format_pixels(pixels: &[u8], width: u16) -> Vec<Vec<(u8, u8, u8)>> {
         .collect()
 }
 
+/// Waits until the terminal size is greater than the given `min_widht` and `min_height`.
 fn wait_for_terminal_scale(min_width: u32, min_height: u32) {
     if let Some((mut w, mut h)) = term_size::dimensions() {
         println!(
@@ -88,7 +106,7 @@ fn wait_for_terminal_scale(min_width: u32, min_height: u32) {
         );
         while w < min_width as usize || h < min_height as usize {
             println!(
-                "\x1b[1A\x1b[1;31m{} x {}\x1b[0m (current: {} x {})",
+                "\x1b[1A\x1b[2K\x1b[1;31m{} x {}\x1b[0m (current: {} x {})",
                 min_width, min_height, w, h
             );
             std::thread::sleep(Duration::from_millis(500));

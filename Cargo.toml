@@ -14,3 +14,5 @@ ffmpeg-next = { version = "7.1", features = [
 cpal = "0.15.3"
 ringbuf = "0.2.6"
 term_size = "0.3.2"
+imageproc = "0.25.0"
+ab_glyph = "0.2.29"

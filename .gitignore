@@ -3,3 +3,4 @@
 *.a
 /assets
 *.DS_Store
+/tmp
