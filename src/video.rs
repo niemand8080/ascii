@@ -135,7 +135,7 @@ fn get_audio(
 fn get_video(
     ictx: &mut Input,
     scale_algorithm: ffmpeg_next::software::scaling::flag::Flags,
-    max_width: f64,
+    max_width: Option<f64>,
 ) -> (ffmpeg::codec::decoder::Video, Context, usize) {
     let video_input = ictx
         .streams()
@@ -152,9 +152,13 @@ fn get_video(
         .video()
         .expect("Couldn't find decoder");
 
-    let factor = match decoder.width() as f64 {
-        w if w <= max_width => 1.0,
-        w => max_width / w,
+    let factor = if let Some(max_width) = max_width {
+        match decoder.width() as f64 {
+            w if w <= max_width => 1.0,
+            w => max_width / w,
+        }
+    } else {
+        1.0
     };
 
     // create scaler
@@ -187,20 +191,21 @@ pub fn draw(
     scale_algorithm: ffmpeg_next::software::scaling::flag::Flags,
     max_width: f64,
 ) {
-    play(path, scale_algorithm, max_width, false, true, |p, _| {
+    play(path, scale_algorithm, Some(max_width), false, true, |p, _| {
         let height = p.len();
         crate::draw(p);
         print!("\x1b[{height}A");
     });
 }
 
-///
+/// `max_width` is the `max_width` of the video that get's converted to images that then get
+/// converted back to a video...
 pub fn draw_to_file(
     src: &str,
     dst: &str,
     font: &ab_glyph::FontRef<'_>,
     scale_algorithm: ffmpeg_next::software::scaling::flag::Flags,
-    max_width: f64,
+    max_width: Option<f64>,
 ) {
     let id = rand::random::<u32>();
     let mut counter = 0;
@@ -208,7 +213,7 @@ pub fn draw_to_file(
     let root = "tmp";
 
     fs::create_dir_all(root).unwrap();
-    
+
     let tmp_video = format!("{root}/{id}.video.mp4");
 
     let mut mp4muxer = minimp4::Mp4Muxer::new(fs::File::create(&tmp_video).unwrap());
@@ -225,15 +230,15 @@ pub fn draw_to_file(
         false,
         move |pixels, frame_rate| {
             let target = format!("{root}/{id}.frame.{counter}.jpg");
-            println!("{counter}: draw to file");
+            // println!("{counter}: draw to file");
             crate::image::draw_to_file(&target, font, pixels);
 
-            println!("{counter}: get rgb pixels");
+            // println!("{counter}: get rgb pixels");
             let (pixels, width, height) = crate::image::get_pixels(&target, None);
 
             let mut encoder = openh264::encoder::Encoder::new().expect("Couldn't create encoder");
 
-            println!("{counter}: convert rgb to yuv");
+            // println!("{counter}: convert rgb to yuv");
             let rgb_source =
                 openh264::formats::RgbSliceU8::new(&pixels, (width as usize, height as usize));
             let yuv = openh264::formats::YUVBuffer::from_rgb_source(rgb_source);
@@ -243,20 +248,20 @@ pub fn draw_to_file(
             let mut buf = Vec::new();
             bitstream.write_vec(&mut buf);
 
-            println!("{counter}: write to video (buf len: {})", buf.len());
+            // println!("{counter}: write to video (buf len: {})", buf.len());
             mref.write_video_with_fps(&buf, frame_rate);
-            println!("{counter}: remove file");
+            // println!("{counter}: remove file");
             fs::remove_file(target).expect("Couldn't remove file");
             // crate::draw(pixels);
             counter += 1;
-            print!("\x1b[5A");
+            // print!("\x1b[5A");
         },
     );
     mp4muxer.close();
 
-    println!("\x1b[5BConvert file, so its smaler");
+    // println!("\x1b[5BConvert file, so its smaler");
     crate::convert::convert(src, &tmp_video, dst);
-    println!("Remove tmp video file: {tmp_video}");
+    // println!("Remove tmp video file: {tmp_video}");
     if let Err(err) = fs::remove_file(&tmp_video) {
         eprintln!("{err}");
     }
@@ -265,7 +270,7 @@ pub fn draw_to_file(
 fn play<F>(
     path: &str,
     scale_algorithm: ffmpeg_next::software::scaling::flag::Flags,
-    max_width: f64,
+    max_width: Option<f64>,
     disable_audio: bool,
     fit_termianl: bool,
     mut f: F,

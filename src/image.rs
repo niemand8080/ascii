@@ -34,8 +34,8 @@ pub fn get_pixels(path: &str, max_width: Option<f64>) -> (Vec<u8>, u16, u16) {
 }
 
 /// Draws the given `image path` to stdout after scaling it to `max_width`.
-pub fn draw(path: &str, max_width: f64) {
-    let (pixels, w, h) = get_pixels(path, Some(max_width));
+pub fn draw(path: &str, max_width: Option<f64>) {
+    let (pixels, w, h) = get_pixels(path, max_width);
     let rows = crate::format_pixels(&pixels, w);
 
     wait_for_terminal_scale(w as u32 * 2, h as u32);
