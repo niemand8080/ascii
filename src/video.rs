@@ -17,6 +17,7 @@ use ringbuf::RingBuffer;
 
 use std::fs::{self, File};
 use std::io::Read;
+use std::time::SystemTime;
 
 trait SampleFormatConversion {
     fn as_ffmpeg_sample(&self) -> FFmpegSample;
@@ -191,11 +192,18 @@ pub fn draw(
     scale_algorithm: ffmpeg_next::software::scaling::flag::Flags,
     max_width: f64,
 ) {
-    play(path, scale_algorithm, Some(max_width), false, true, |p, _| {
-        let height = p.len();
-        crate::draw(p);
-        print!("\x1b[{height}A");
-    });
+    play(
+        path,
+        scale_algorithm,
+        Some(max_width),
+        false,
+        true,
+        |p, _, _| {
+            let height = p.len();
+            crate::draw(p);
+            print!("\x1b[{height}A");
+        },
+    );
 }
 
 /// `max_width` is the `max_width` of the video that get's converted to images that then get
@@ -221,17 +229,64 @@ pub fn draw_to_file(
     // todo: make get the correct size.
     mp4muxer.init_video(1280, 720, false, dst);
 
+    let mut frame = Vec::new();
+    let started = SystemTime::now();
+
     let mref = &mut mp4muxer;
+    let moved_frame = &mut frame;
     play(
         src,
         scale_algorithm,
         max_width,
         true,
         false,
-        move |pixels, frame_rate| {
+        move |pixels, frame_rate, duration_micros| {
+            if counter % 10 == 0 {
+                *moved_frame = crate::downscale_pixels(&pixels, 50).unwrap_or(pixels.clone());
+
+                let frames = frame_rate * (duration_micros / 1_000_000) as u32;
+                let decimal = counter as f64 / frames as f64;
+
+                let f = |pixels: &Pixels, dec_percentage: f64| {
+                    let width = pixels[0].len();
+                    let max_count = ((pixels.len() * width) as f64 * dec_percentage) as usize;
+                    let mut count: usize = 0;
+                    println!("╭{:─<1$}╮", "", width * 2);
+                    for row in pixels {
+                        // ╭───╮
+                        // │   │
+                        // ╰───╯
+                        let mut left = row.len();
+                        print!("\x1b[0m│");
+                        for (r, g, b) in row {
+                            if count >= max_count {
+                                break;
+                            }
+                            let l = crate::get_lightness(*r, *g, *b);
+                            let s = crate::symbol(l);
+                            print!("\x1b[38;2;{r};{g};{b}m{s}{s}");
+                            count += 1;
+                            left -= 1;
+                        }
+                        print!("{: <w$}\x1b[0m│", "", w = left * 2);
+                        println!();
+                    }
+                    let info = format!(
+                        "\x1b[1;32m{}% {:>10}s",
+                        (dec_percentage * 100.0).round(),
+                        SystemTime::now().duration_since(started).unwrap().as_secs()
+                    );
+                    println!("\x1b[0m│{: ^w$}\x1b[0m│", info, w = width * 2 + 7);
+                    println!("╰{:─<w$}╯", "", w = width * 2);
+                    print!("\x1b[{}A", moved_frame.len() + 3);
+                };
+
+                f(&moved_frame, decimal);
+            }
+
             let target = format!("{root}/{id}.frame.{counter}.jpg");
             // println!("{counter}: draw to file");
-            crate::image::draw_to_file(&target, font, pixels);
+            crate::image::draw_to_file(&target, font, &pixels);
 
             // println!("{counter}: get rgb pixels");
             let (pixels, width, height) = crate::image::get_pixels(&target, None);
@@ -259,9 +314,9 @@ pub fn draw_to_file(
     );
     mp4muxer.close();
 
-    // println!("\x1b[5BConvert file, so its smaler");
+    println!("\x1b[{}BConvert file, so its smaler", frame.len() + 4);
     crate::convert::convert(src, &tmp_video, dst);
-    // println!("Remove tmp video file: {tmp_video}");
+    println!("Remove tmp video file: {tmp_video}");
     if let Err(err) = fs::remove_file(&tmp_video) {
         eprintln!("{err}");
     }
@@ -275,10 +330,11 @@ fn play<F>(
     fit_termianl: bool,
     mut f: F,
 ) where
-    F: FnMut(Pixels, u32),
+    F: FnMut(Pixels, u32, i64),
 {
     // new input ctx
     let mut ictx = ffmpeg::format::input(path).expect("Couldn't open file");
+    let duration_micros = ictx.duration();
 
     // create buffer to store audio data
     let buffer = RingBuffer::<f32>::new(2usize.pow(13));
@@ -334,7 +390,7 @@ fn play<F>(
                 .expect("Input or output changed");
             let pixels = rgb_frame.data(0);
             let rows = crate::format_pixels(pixels, rgb_frame.width() as u16);
-            f(rows, fps as u32);
+            f(rows, fps as u32, duration_micros);
         }
     };
 

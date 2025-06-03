@@ -1,6 +1,6 @@
+pub mod convert;
 pub mod image;
 pub mod video;
-pub mod convert;
 
 use std::time::Duration;
 
@@ -119,6 +119,62 @@ fn wait_for_terminal_scale(min_width: u32, min_height: u32) {
     } else {
         eprintln!("Unable to get terminal dimensions");
     }
+}
+
+/// Downscale `Pixels` to the given `new_width`.
+///
+/// If the width of the pixels is smaler than `new_width` it will just return None.
+pub fn downscale_pixels(pixels: &Pixels, new_width: usize) -> Option<Pixels> {
+    let og_width = pixels[0].len();
+    if og_width <= new_width {
+        return None;
+    }
+
+    let og_height = pixels.len();
+
+    let factor = new_width as f64 / og_width as f64;
+    let new_height = (og_height as f64 * factor).round() as usize;
+
+    let mut down_scaled = Vec::new();
+
+    for hrows in pixels.chunks(og_height / new_height) {
+        let wchunks = hrows
+            .iter()
+            .fold(Vec::new(), |mut acc: Vec<Vec<&[(u8, u8, u8)]>>, hrow| {
+                for (i, chunk) in hrow.chunks(og_width / new_width).enumerate() {
+                    if acc.get(i).is_some() {
+                        acc[i].push(chunk);
+                    } else {
+                        acc.push(Vec::from([chunk]));
+                    }
+                }
+                acc
+            });
+
+        let mut new_hrow = Vec::with_capacity(new_width);
+        for chunks in wchunks {
+            let mut r = Vec::new();
+            let mut g = Vec::new();
+            let mut b = Vec::new();
+            for rows in chunks {
+                for pixel in rows {
+                    r.push(pixel.0 as usize);
+                    g.push(pixel.1 as usize);
+                    b.push(pixel.2 as usize);
+                }
+            }
+            let gavg = |values: &[usize]| {
+                let len = values.len();
+                let sum: usize = values.iter().sum();
+                (sum / len) as u8
+            };
+            let avg = (gavg(&r), gavg(&g), gavg(&b));
+            new_hrow.push(avg);
+        }
+        down_scaled.push(new_hrow);
+    }
+
+    Some(down_scaled)
 }
 
 #[cfg(test)]

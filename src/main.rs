@@ -14,11 +14,9 @@ fn main() {
 
     let font = FontRef::try_from_slice(include_bytes!("/Users/ben/Library/Fonts/JetBrainsMonoNerdFont-Regular.ttf")).unwrap();
 
-    video::draw_to_file("examples/BigBuckBunny.mp4", "examples/BigBuckBunny2.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
-    // video::draw_to_file("assets/All My Fellas.mp4", "examples/All My Fellas.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
-    // video::draw_to_file("assets/Deichkind.mp4", "examples/Deichkind.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
-    // video::draw_to_file("assets/Dancin.mp4", "examples/Dancin.mp4", &font, Flags::BICUBIC,
-    // Some(MAX_WIDTH));
+    // video::draw_to_file("examples/BigBuckBunny.mp4", "tmp/out.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    // video::draw_to_file("assets/All My Fellas.mp4", "tmp/out.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    video::draw_to_file("assets/Deichkind.mp4", "tmp/Deichkind.outmp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
 
     // image::draw_to_file("examples/ascii-torii-gate-japan.jpg", &font, image::get_rows("examples/torii-gate-japan.jpg", MAX_WIDTH).0);
 

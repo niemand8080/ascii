@@ -44,7 +44,7 @@ pub fn draw(path: &str, max_width: Option<f64>) {
 }
 
 /// Get `ImageBuffer` with the given pixels.
-pub fn get_image_buf(font: &FontRef<'_>, pixels: Pixels) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+pub fn get_image_buf(font: &FontRef<'_>, pixels: &Pixels) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     let kerning: u32 = 4;
     let font_size = 12.0;
     let font_scale = PxScale {
@@ -62,11 +62,11 @@ pub fn get_image_buf(font: &FontRef<'_>, pixels: Pixels) -> ImageBuffer<Rgb<u8>,
     for row in pixels {
         let mut pixel_index = 0;
         for (r, g, b) in row {
-            let l = crate::get_lightness(r, g, b);
+            let l = crate::get_lightness(*r, *g, *b);
             let s = crate::symbol(l).to_string();
             draw_text_mut(
                 &mut image,
-                Rgb([r, g, b]),
+                Rgb([*r, *g, *b]),
                 pixel_index * (font_scale.x as i32 - kerning as i32),
                 row_index * (font_scale.y as i32 - kerning as i32),
                 font_scale,
@@ -81,7 +81,7 @@ pub fn get_image_buf(font: &FontRef<'_>, pixels: Pixels) -> ImageBuffer<Rgb<u8>,
 }
 
 /// Draws the given `pixels` with the given `font` to the given `target` path.
-pub fn draw_to_file(target: &str, font: &FontRef<'_>, pixels: Pixels) {
+pub fn draw_to_file(target: &str, font: &FontRef<'_>, pixels: &Pixels) {
     let image = get_image_buf(font, pixels);
     draw_buf_to_file(target, &image);
 }
