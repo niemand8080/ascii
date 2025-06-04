@@ -217,6 +217,7 @@ pub fn draw_to_file(
 ) {
     let id = rand::random::<u32>();
     let mut counter = 0;
+    let title = src.split("/").last().unwrap_or(&src);
 
     let root = "tmp";
 
@@ -244,20 +245,31 @@ pub fn draw_to_file(
             if counter % 10 == 0 {
                 *moved_frame = crate::downscale_pixels(&pixels, 50).unwrap_or(pixels.clone());
 
-                let frames = frame_rate * (duration_micros / 1_000_000) as u32;
-                let decimal = counter as f64 / frames as f64;
+                let frames = frame_rate * (duration_micros / 1_000_000) as f32;
+                let decimal = counter as f32 / frames;
 
-                let f = |pixels: &Pixels, dec_percentage: f64| {
+                let frame_color = match decimal {
+                    d if d < 0.5 => 31,
+                    d if d < 0.9 => 33,
+                    _ => 33,
+                };
+                let fc = format!("\x1b[{frame_color}m");
+
+                let f = |pixels: &Pixels, dec_percentage: f32| {
                     let width = pixels[0].len();
-                    let max_count = ((pixels.len() * width) as f64 * dec_percentage) as usize;
+                    let max_count = ((pixels.len() * width) as f32 * dec_percentage) as usize;
                     let mut count: usize = 0;
-                    println!("╭{:─<1$}╮", "", width * 2);
+                    println!(
+                        "{fc}╭{:─^1$}╮",
+                        format!(" \x1b[1;{frame_color}m{title}{fc} "),
+                        width * 2 + 12
+                    );
                     for row in pixels {
                         // ╭───╮
-                        // │   │
+                        // ├───┤
                         // ╰───╯
                         let mut left = row.len();
-                        print!("\x1b[0m│");
+                        print!("{fc}│");
                         for (r, g, b) in row {
                             if count >= max_count {
                                 break;
@@ -268,32 +280,49 @@ pub fn draw_to_file(
                             count += 1;
                             left -= 1;
                         }
-                        print!("{: <w$}\x1b[0m│", "", w = left * 2);
+                        print!("{: <w$}{fc}│", "", w = left * 2);
                         println!();
                     }
-                    let info = format!(
-                        "\x1b[1;32m{}% {:>10}s",
-                        (dec_percentage * 100.0).round(),
-                        SystemTime::now().duration_since(started).unwrap().as_secs()
-                    );
-                    println!("\x1b[0m│{: ^w$}\x1b[0m│", info, w = width * 2 + 7);
-                    println!("╰{:─<w$}╯", "", w = width * 2);
-                    print!("\x1b[{}A", moved_frame.len() + 3);
+                    let secs_since = SystemTime::now().duration_since(started).unwrap().as_secs();
+                    let secs_since = if secs_since == 0 { 1 } else { secs_since };
+                    let fps = if counter == 0 {
+                        1 / secs_since
+                    } else {
+                        counter / secs_since
+                    };
+                    let info = if dec_percentage < 1.0 {
+                        format!(
+                            "\x1b[1;32m{}% {:>10}s {:>10} fps",
+                            (dec_percentage * 100.0).round(),
+                            secs_since,
+                            (counter / secs_since),
+                        )
+                    } else {
+                        format!(
+                            "\x1b[1;32mDone! (in {}s, fps: {})",
+                            secs_since,
+                            (counter / secs_since),
+                        )
+                    };
+                    let info_title = format!(" \x1b[1;{frame_color}minfo{fc} ");
+                    println!("{fc}├{:─^w$}┤", info_title, w = width * 2 + 12);
+                    println!("{fc}│{: ^w$}{fc}│", info, w = width * 2 + 7);
+                    println!("{fc}╰{:─<w$}{fc}╯", "", w = width * 2);
+                    print!("\x1b[{}A\x1b[0m", moved_frame.len() + 4);
                 };
 
                 f(&moved_frame, decimal);
             }
 
+            // draw the pixels to a file
             let target = format!("{root}/{id}.frame.{counter}.jpg");
-            // println!("{counter}: draw to file");
             crate::image::draw_to_file(&target, font, &pixels);
 
-            // println!("{counter}: get rgb pixels");
+            // get the images rgb values
             let (pixels, width, height) = crate::image::get_pixels(&target, None);
 
+            // convert the rgb values to yuv
             let mut encoder = openh264::encoder::Encoder::new().expect("Couldn't create encoder");
-
-            // println!("{counter}: convert rgb to yuv");
             let rgb_source =
                 openh264::formats::RgbSliceU8::new(&pixels, (width as usize, height as usize));
             let yuv = openh264::formats::YUVBuffer::from_rgb_source(rgb_source);
@@ -303,13 +332,11 @@ pub fn draw_to_file(
             let mut buf = Vec::new();
             bitstream.write_vec(&mut buf);
 
-            // println!("{counter}: write to video (buf len: {})", buf.len());
-            mref.write_video_with_fps(&buf, frame_rate);
-            // println!("{counter}: remove file");
+            // write the resulting frame to the final video
+            mref.write_video_with_fps(&buf, frame_rate.round() as u32);
+            // remove the tmp, image file
             fs::remove_file(target).expect("Couldn't remove file");
-            // crate::draw(pixels);
             counter += 1;
-            // print!("\x1b[5A");
         },
     );
     mp4muxer.close();
@@ -330,7 +357,7 @@ fn play<F>(
     fit_termianl: bool,
     mut f: F,
 ) where
-    F: FnMut(Pixels, u32, i64),
+    F: FnMut(Pixels, f32, i64),
 {
     // new input ctx
     let mut ictx = ffmpeg::format::input(path).expect("Couldn't open file");
@@ -380,9 +407,10 @@ fn play<F>(
     let mut process_frames = |decoder: &mut ffmpeg::decoder::Video| {
         let mut decoded = Video::empty();
         let fps = match decoder.frame_rate() {
-            Some(fr) => fr.numerator(),
-            None => 24,
+            Some(fr) => fr.numerator() as f32,
+            None => 24.0,
         };
+        let fps = if fps < 1000.0 { 24.0 } else { fps };
         while decoder.receive_frame(&mut decoded).is_ok() {
             let mut rgb_frame = Video::empty();
             scaler
@@ -390,7 +418,7 @@ fn play<F>(
                 .expect("Input or output changed");
             let pixels = rgb_frame.data(0);
             let rows = crate::format_pixels(pixels, rgb_frame.width() as u16);
-            f(rows, fps as u32, duration_micros);
+            f(rows, fps, duration_micros);
         }
     };
 
