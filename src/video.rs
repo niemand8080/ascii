@@ -230,11 +230,14 @@ pub fn draw_to_file(
     // todo: make get the correct size.
     mp4muxer.init_video(1280, 720, false, dst);
 
-    let mut frame = Vec::new();
+    let mut loading_frame = Vec::new();
     let started = SystemTime::now();
 
     let mref = &mut mp4muxer;
-    let moved_frame = &mut frame;
+    let moved_lframe = &mut loading_frame;
+
+    // let mut ns_spend_f_loading = Vec::new();
+    // let ns_spend_f_loading_mref = &mut ns_spend_f_loading;
     play(
         src,
         scale_algorithm,
@@ -243,15 +246,20 @@ pub fn draw_to_file(
         false,
         move |pixels, frame_rate, duration_micros| {
             if counter % 10 == 0 {
-                *moved_frame = crate::downscale_pixels(&pixels, 50).unwrap_or(pixels.clone());
+                let s = SystemTime::now();
+                let (w, h) = term_size::dimensions().unwrap_or((50, 0));
+                let w = 52.min(w) - 2;
+                let h = 28.min(h);
+                let h = if h == 0 && h > 6 { None } else { Some(h - 5) };
+                *moved_lframe = crate::downscale_pixels(&pixels, w, h).unwrap_or(pixels.clone());
 
                 let frames = frame_rate * (duration_micros / 1_000_000) as f32;
                 let decimal = counter as f32 / frames;
 
                 let frame_color = match decimal {
                     d if d < 0.5 => 31,
-                    d if d < 0.9 => 33,
-                    _ => 33,
+                    d if d < 1.0 => 33,
+                    _ => 32,
                 };
                 let fc = format!("\x1b[{frame_color}m");
 
@@ -276,6 +284,7 @@ pub fn draw_to_file(
                             }
                             let l = crate::get_lightness(*r, *g, *b);
                             let s = crate::symbol(l);
+                            let s = if s == ' ' { '.' } else { s };
                             print!("\x1b[38;2;{r};{g};{b}m{s}{s}");
                             count += 1;
                             left -= 1;
@@ -286,45 +295,44 @@ pub fn draw_to_file(
                     let secs_since = SystemTime::now().duration_since(started).unwrap().as_secs();
                     let secs_since = if secs_since == 0 { 1 } else { secs_since };
                     let fps = if counter == 0 {
-                        1 / secs_since
+                        1.0 / secs_since as f32
                     } else {
-                        counter / secs_since
+                        counter as f32 / secs_since as f32
                     };
+                    let fps = format!("{fps:.1}");
                     let info = if dec_percentage < 1.0 {
                         format!(
                             "\x1b[1;32m{}% {:>10}s {:>10} fps",
                             (dec_percentage * 100.0).round(),
                             secs_since,
-                            (counter / secs_since),
+                            fps,
                         )
                     } else {
-                        format!(
-                            "\x1b[1;32mDone! (in {}s, fps: {})",
-                            secs_since,
-                            (counter / secs_since),
-                        )
+                        format!("\x1b[1;32mDone! (in {}s, fps: {fps})", secs_since)
                     };
                     let info_title = format!(" \x1b[1;{frame_color}minfo{fc} ");
                     println!("{fc}├{:─^w$}┤", info_title, w = width * 2 + 12);
                     println!("{fc}│{: ^w$}{fc}│", info, w = width * 2 + 7);
                     println!("{fc}╰{:─<w$}{fc}╯", "", w = width * 2);
-                    print!("\x1b[{}A\x1b[0m", moved_frame.len() + 4);
+                    print!("\x1b[{}A\x1b[0m", moved_lframe.len() + 4);
                 };
 
-                f(&moved_frame, decimal);
+                f(&moved_lframe, decimal);
+                // ns_spend_f_loading_mref
+                //     .push(SystemTime::now().duration_since(s).unwrap().as_nanos());
             }
 
             // draw the pixels to a file
             let target = format!("{root}/{id}.frame.{counter}.jpg");
-            crate::image::draw_to_file(&target, font, &pixels);
-
-            // get the images rgb values
-            let (pixels, width, height) = crate::image::get_pixels(&target, None);
+            let tmp_img = crate::image::get_image_buf(font, &pixels);
+            let height = tmp_img.height();
+            let width = tmp_img.width();
+            let rgb = tmp_img.as_raw();
 
             // convert the rgb values to yuv
             let mut encoder = openh264::encoder::Encoder::new().expect("Couldn't create encoder");
             let rgb_source =
-                openh264::formats::RgbSliceU8::new(&pixels, (width as usize, height as usize));
+                openh264::formats::RgbSliceU8::new(&rgb, (width as usize, height as usize));
             let yuv = openh264::formats::YUVBuffer::from_rgb_source(rgb_source);
 
             let bitstream = encoder.encode(&yuv).unwrap();
@@ -334,19 +342,26 @@ pub fn draw_to_file(
 
             // write the resulting frame to the final video
             mref.write_video_with_fps(&buf, frame_rate.round() as u32);
-            // remove the tmp, image file
-            fs::remove_file(target).expect("Couldn't remove file");
             counter += 1;
         },
     );
     mp4muxer.close();
 
-    println!("\x1b[{}BConvert file, so its smaler", frame.len() + 4);
+    println!(
+        "\x1b[{}BConvert file, so its smaler",
+        loading_frame.len() + 4
+    );
     crate::convert::convert(src, &tmp_video, dst);
     println!("Remove tmp video file: {tmp_video}");
     if let Err(err) = fs::remove_file(&tmp_video) {
         eprintln!("{err}");
     }
+
+    // let sum: u128 = ns_spend_f_loading.iter().sum::<u128>() / 1_000_000;
+    // println!(
+    //     "spend ms loading: {sum}\navg ms: {}",
+    //     sum / ns_spend_f_loading.len() as u128
+    // );
 }
 
 fn play<F>(
@@ -410,7 +425,7 @@ fn play<F>(
             Some(fr) => fr.numerator() as f32,
             None => 24.0,
         };
-        let fps = if fps < 1000.0 { 24.0 } else { fps };
+        let fps = if fps > 1000.0 { 24.0 } else { fps };
         while decoder.receive_frame(&mut decoded).is_ok() {
             let mut rgb_frame = Video::empty();
             scaler

@@ -124,7 +124,11 @@ fn wait_for_terminal_scale(min_width: u32, min_height: u32) {
 /// Downscale `Pixels` to the given `new_width`.
 ///
 /// If the width of the pixels is smaler than `new_width` it will just return None.
-pub fn downscale_pixels(pixels: &Pixels, new_width: usize) -> Option<Pixels> {
+pub fn downscale_pixels(
+    pixels: &Pixels,
+    new_width: usize,
+    new_height: Option<usize>,
+) -> Option<Pixels> {
     let og_width = pixels[0].len();
     if og_width <= new_width {
         return None;
@@ -133,7 +137,7 @@ pub fn downscale_pixels(pixels: &Pixels, new_width: usize) -> Option<Pixels> {
     let og_height = pixels.len();
 
     let factor = new_width as f64 / og_width as f64;
-    let new_height = (og_height as f64 * factor).round() as usize;
+    let new_height = new_height.unwrap_or((og_height as f64 * factor).round() as usize);
 
     let mut down_scaled = Vec::new();
 

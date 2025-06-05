@@ -14,19 +14,21 @@ fn main() {
 
     let font = FontRef::try_from_slice(include_bytes!("/Users/ben/Library/Fonts/JetBrainsMonoNerdFont-Regular.ttf")).unwrap();
 
-    // video::draw_to_file("examples/BigBuckBunny.mp4", "tmp/out.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
-    // video::draw_to_file("assets/All My Fellas.mp4", "tmp/out.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
-    // video::draw_to_file("assets/Deichkind.mp4", "tmp/Deichkind.outmp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
-    // video::draw_to_file("assets/Dancin.mp4", "tmp/Dancin.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
-    // video::draw_to_file("assets/Everybody Wants To Be Famous.mp4", "tmp/Everybody Wants To Be Famous.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
-    // video::draw_to_file("assets/Something For Your M.I.N.D.mp4", "tmp/Something For Your M.I.N.D.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    video::draw_to_file("examples/BigBuckBunny.mp4", "tmp/out.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
 
-    // Did not work????
-    video::draw_to_file("assets/Flashback.mp4", "tmp/Flashback.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
-    // video::draw_to_file("assets/DanDaDan-Opening.mp4", "tmp/DanDaDan-Opening.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH)); 
-    // video::draw_to_file("assets/Nakimushi.mp4", "tmp/Nakimushi.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    // 3439s
+    // video::draw_to_file("assets/All My Fellas.mp4", "tmp/All My Fellas.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    // video::draw_to_file("assets/Deichkind.mp4", "tmp/Deichkind.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    // video::draw_to_file("assets/Dancin.mp4", "tmp/Dancin.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    // video::draw_to_file("assets/Flashback.mp4", "tmp/Flashback.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
     // video::draw_to_file("assets/unreval.mp4", "tmp/unreval.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
-    // video::draw_to_file("assets/Blink-Bang-Bang-Born.mp4", "tmp/Blink-Bang-Bang-Born.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+
+    // video::draw_to_file("assets/Nakimushi.mp4", "tmp/Nakimushi.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    // video::draw_to_file("assets/Hell's Paradise.mp4", "tmp/Hell's Paradise.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    // video::draw_to_file("assets/Mob Psycho 100 99.mp4", "tmp/Mob Psycho 100 99.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    // video::draw_to_file("assets/Mob Psycho 100.mp4", "tmp/Mob Psycho 100.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    // video::draw_to_file("assets/This Is It.mp4", "tmp/This Is It.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    // video::draw_to_file("assets/We love Arataka Reigen.mp4", "tmp/We love Arataka Reigen.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
 
     // image::draw_to_file("examples/ascii-torii-gate-japan.jpg", &font, image::get_rows("examples/torii-gate-japan.jpg", MAX_WIDTH).0);
 
