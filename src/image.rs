@@ -1,7 +1,7 @@
 use crate::{Pixels, wait_for_terminal_scale};
 
 use ab_glyph::{FontRef, PxScale};
-use imageproc::drawing::{draw_text_mut, text_size};
+use imageproc::drawing::draw_text_mut;
 use imageproc::image::{ImageBuffer, Rgb, RgbImage};
 use jpeg_decoder::Decoder;
 

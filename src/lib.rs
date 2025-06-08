@@ -75,6 +75,17 @@ pub fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (u16, u8, u8) {
     (h.round() as u16, s.round() as u8, (l * 100.0).round() as u8)
 }
 
+pub fn rgb_to_yuv(r: u8, g: u8, b: u8) -> (u8, u8, u8) {
+    let y = (0.299 * r as f64) + (0.587 * g as f64) + (0.114 * b as f64);
+    let u = 0.492 * (b as f64 - y);
+    let v = 0.877 * (r as f64 - y);
+    (
+        y as u8,
+        (u + 128.0) as u8,
+        (v + 128.0) as u8,
+    )
+}
+
 /// Formats the given pixels (not structured) into a structured form.
 ///
 /// # Example
@@ -187,51 +198,59 @@ mod tests {
     use std::time::SystemTime;
 
     #[test]
-    fn convert_speed() {
-        let times = 100;
-        let from = 0;
-        let to = 100;
-
-        let count = times as u64 * to as u64 * to as u64 * to as u64;
-
-        let started_hsl = SystemTime::now();
-        // let mut counter = 0;
-        for _ in 0..times {
-            for r in from..to {
-                for g in from..to {
-                    for b in from..to {
-                        // counter += 1;
-                        let _ = rgb_to_hsl(r, g, b);
-                    }
-                }
-            }
-        }
-        println!("for {count} convertions");
-        println!(
-            "rgb to hsl: {}ms",
-            SystemTime::now()
-                .duration_since(started_hsl)
-                .unwrap()
-                .as_millis()
-        );
-        let started_l = SystemTime::now();
-        for _ in 0..times {
-            for r in from..to {
-                for g in from..to {
-                    for b in from..to {
-                        let _ = get_lightness(r, g, b);
-                    }
-                }
-            }
-        }
-        panic!(
-            "rgb to l: {}ms",
-            SystemTime::now()
-                .duration_since(started_l)
-                .unwrap()
-                .as_millis()
-        );
+    fn convert_rgb_to_yuv() {
+        println!("{:?}", rgb_to_yuv(255, 0, 0));
+        println!("{:?}", rgb_to_yuv(0, 255, 0));
+        println!("{:?}", rgb_to_yuv(0, 0, 255));
+        assert_eq!(rgb_to_yuv(255, 0, 0), (76, 84, 255));
     }
+
+    // #[test]
+    // fn convert_speed() {
+    //     let times = 100;
+    //     let from = 0;
+    //     let to = 100;
+
+    //     let count = times as u64 * to as u64 * to as u64 * to as u64;
+
+    //     let started_hsl = SystemTime::now();
+    //     // let mut counter = 0;
+    //     for _ in 0..times {
+    //         for r in from..to {
+    //             for g in from..to {
+    //                 for b in from..to {
+    //                     // counter += 1;
+    //                     let _ = rgb_to_hsl(r, g, b);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     println!("for {count} convertions");
+    //     println!(
+    //         "rgb to hsl: {}ms",
+    //         SystemTime::now()
+    //             .duration_since(started_hsl)
+    //             .unwrap()
+    //             .as_millis()
+    //     );
+    //     let started_l = SystemTime::now();
+    //     for _ in 0..times {
+    //         for r in from..to {
+    //             for g in from..to {
+    //                 for b in from..to {
+    //                     let _ = get_lightness(r, g, b);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     panic!(
+    //         "rgb to l: {}ms",
+    //         SystemTime::now()
+    //             .duration_since(started_l)
+    //             .unwrap()
+    //             .as_millis()
+    //     );
+    // }
 
     // #[test]
     // fn convert() {

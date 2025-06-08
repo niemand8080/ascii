@@ -1,11 +1,10 @@
-use ascii::{image, video};
-use std::fs::File;
+use ascii::video;
 
 use ab_glyph::FontRef;
 
 use ffmpeg_next::software::scaling::flag::Flags;
 
-const MAX_WIDTH: f64 = 5.0 * 32.0;
+const MAX_WIDTH: f64 = 15.0 * 32.0;
 
 // PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/homebrew/lib/pkgconfig cargo run --release
 
@@ -14,9 +13,9 @@ fn main() {
 
     let font = FontRef::try_from_slice(include_bytes!("/Users/ben/Library/Fonts/JetBrainsMonoNerdFont-Regular.ttf")).unwrap();
 
-    video::draw_to_file("examples/BigBuckBunny.mp4", "tmp/out.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
+    // video::draw_to_file("examples/BigBuckBunny.mp4", "tmp/out.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
 
-    // 3439s
+    // 15 * 32: 2115s
     // video::draw_to_file("assets/All My Fellas.mp4", "tmp/All My Fellas.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
     // video::draw_to_file("assets/Deichkind.mp4", "tmp/Deichkind.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
     // video::draw_to_file("assets/Dancin.mp4", "tmp/Dancin.mp4", &font, Flags::BICUBIC, Some(MAX_WIDTH));
