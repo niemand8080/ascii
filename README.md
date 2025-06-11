@@ -2,6 +2,11 @@
 
 For the Video to ASCII part it is recommended to use a very fast terminal like [alacritty](https://alacritty.org), if you want to ouput it to stdout.
 
+## TODO
+
+  - [ ] Make this (a lot) faster.
+  - [ ] Make it a CLI tool.
+
 ## Requirements
 
 1. FFmpeg (I only tested version 7.1.1)
